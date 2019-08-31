@@ -1,119 +1,44 @@
-const boxen = require('boxen')
-const chalk = require('chalk')
+#!/usr/bin/env node
+const path = require('path')
+const os = require('os')
+const fs = require('fs')
+const util = require('util')
+const _exec = require('child_process').execSync
+const exec = (cmd) => _exec(cmd, {encoding: 'utf8'}).trim()
 
-const {
-  isHyper,
-  isITerm,
-  isCI,
-  isSilentMode
-} = require('./lib/detect')
+if (require.main !== module) return
 
-const { isShownRecently, markShown } = require('./lib/limit')
+if (!process.argv[2] || process.argv[3]) {
+  const example = `${os.homedir}/Library/Application Support/BraveSoftware/Brave-Browser/Default`
+  console.warn(`
+Usage: funding <Brave profile directory>
+  (eg '${example}' on OSX)
 
-const { checkMessage } = require('./lib/check')
-const messages = require('./messages.json')
-const wrap = require('./lib/wrap')
+  This will monkey-patch your npm to add any node modules you install to the
+  contribution list in Brave Rewards.
+`.trim())
 
-function formatTitle (title) {
-  title = wrap(title)
-
-  if (!isCI()) {
-    title = chalk.black(title)
-  }
-
-  if (!isHyper() && !isITerm()) {
-    title = chalk.bold(title)
-  }
-
-  return title
+  process.exit(1)
 }
 
-function formatText (text) {
-  text = wrap(text)
+const PROFILE = process.argv[2]
 
-  text = text.replace(
-    /{{([^}]*?)}}/g,
-    (match, url) => chalk.blue.underline(url)
-  )
+console.log('Monkeying around with npm-lifecycle...')
+const npmRoot = exec('npm root -g')
+process.chdir(path.join(npmRoot, 'npm', 'node_modules', 'npm-lifecycle'))
 
-  if (!isCI()) {
-    text = chalk.black(text)
-  }
+console.log('Installing sqlite (this might take a while)...')
+exec('npm install better-sqlite3')
 
-  return text
-}
+console.log('Writing global hook...')
+const template = fs.readFileSync(path.join(__dirname, 'patch.template.js'), 'utf8')
+fs.writeFileSync('./index-patch.js', template.replace('{{PROFILE}}', PROFILE))
 
-function formatUrl (url) {
-  url = wrap(url, { cut: true })
-  return chalk.blue.underline(url)
-}
+console.log('Patching package.json...')
+const pkg = JSON.parse(fs.readFileSync('./package.json'))
+pkg.main = 'index-patch.js'
+fs.writeFileSync('./package.json', JSON.stringify(pkg, null, 2))
 
-function formatMessage (message) {
-  const { title, text, url } = message
+console.log('Reticulating splines...')
 
-  const coloredMessage = formatTitle(title) + '\n\n' + formatText(text) +
-    '\n\n' + formatUrl(url)
-
-  const opts = {
-    align: 'center',
-    borderStyle: {
-      topLeft: ' ',
-      topRight: ' ',
-      bottomLeft: ' ',
-      bottomRight: ' ',
-      horizontal: ' ',
-      vertical: ' '
-    },
-    float: 'center',
-    margin: 0,
-    padding: {
-      top: 1,
-      right: 4,
-      bottom: 1,
-      left: 4
-    }
-  }
-
-  if (!isCI()) {
-    Object.assign(opts, {
-      backgroundColor: 'white'
-    })
-  }
-
-  return boxen(coloredMessage, opts)
-}
-
-function printMessage () {
-  // Do not print message when npm is run in silent mode
-  if (isSilentMode()) return
-
-  // Do not print message when one has been shown recently
-  if (isShownRecently()) return
-
-  // Skip running if no messages are available
-  if (messages.length === 0) return
-
-  // Select a random message
-  const i = Math.floor(Math.random() * messages.length)
-  const message = messages[i]
-
-  // Check if the strings are safe to print to the terminal. Specifically, the
-  // string should be plain ASCII, excluding control characters. This is
-  // paranoid and not strictly necessary since (1) we curate the messages.json
-  // file by hand and will never include non-ASCII text, and (2) we check the
-  // strings at package publish time (see test/messages.js). But it doesn't hurt
-  // to check again in the client and assert that messages are plain ASCII. This
-  // is the security principle of defense-in-depth.
-  checkMessage(message)
-
-  // Format the message and print it
-  const formattedMessage = formatMessage(message)
-  console.log(formattedMessage + '\n')
-
-  // Limit the frequency that messages are shown
-  markShown()
-}
-
-module.exports = {
-  printMessage
-}
+console.log('Done!')

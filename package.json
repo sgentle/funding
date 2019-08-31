@@ -1,28 +1,16 @@
 {
   "name": "funding",
-  "description": "Get open source maintainers paid",
-  "version": "1.0.9",
+  "description": "Get open source maintainers paid?",
+  "version": "2.0.0",
   "author": {
-    "name": "Feross Aboukhadijeh",
-    "email": "feross@feross.org",
-    "url": "https://feross.org"
+    "name": "Sam Gentle",
+    "email": "sam@samgentle.com"
   },
   "bin": {
-    "funding": "bin/funding.js"
+    "funding": "index.js"
   },
   "bugs": {
     "url": "https://github.com/feross/funding/issues"
-  },
-  "dependencies": {
-    "boxen": "^3.2.0",
-    "chalk": "^2.4.2",
-    "ci-info": "^2.0.0",
-    "term-size": "^2.1.0",
-    "word-wrap": "^1.2.3"
-  },
-  "devDependencies": {
-    "standard": "*",
-    "tape": "^4.11.0"
   },
   "homepage": "https://github.com/feross/funding",
   "keywords": [
@@ -36,10 +24,5 @@
   "repository": {
     "type": "git",
     "url": "git://github.com/feross/funding.git"
-  },
-  "scripts": {
-    "postinstall": "node bin/funding.js",
-    "start": "node tools/clear.js && node bin/funding.js",
-    "test": "standard && npm start && tape test/*.js"
   }
 }
